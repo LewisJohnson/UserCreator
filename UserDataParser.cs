@@ -8,24 +8,31 @@ namespace UserCreator
 {
     public class UserDataParser<T> : IUserDataEnterer
     {
-        public static int nextId;
-
         public async Task WriteDataToCsv(TextWriter textWriter, string fieldName, object data)
         {
-            await textWriter.WriteLineAsync($"{GetNextId()},{fieldName},{data}");
-        }
-
-        private int GetNextId()
-        {
-            return Interlocked.Increment(ref nextId);
+            await textWriter.WriteLineAsync($"{ IdGenerator.GetNextId() },{fieldName},{data}");
         }
 
         public bool TryConvertData(string input, out T data)
         {
+			if (input.Contains(",", StringComparison.CurrentCultureIgnoreCase))
+			{
+				Console.Error.WriteLine($"Param 'input' must not contain a comma.");
+				data = default;
+                return false;
+			}
+
+            if (input.Length > 255)
+            {
+                Console.Error.WriteLineAsync($"Param 'input' must be less than 255 characters");
+                data = default;
+                return false;
+            }
+
             try
             {
-                var parseMethod = typeof(T).GetMethod("Parse", 0, new [] {typeof(string)});
-                if(parseMethod != null) 
+                var parseMethod = typeof(T).GetMethod("Parse", 0, new[] { typeof(string) });
+                if (parseMethod != null)
                 {
                     data = (T)parseMethod.Invoke(null, new[] { input });
                     return true;
@@ -36,11 +43,11 @@ namespace UserCreator
                 }
                 return true;
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 Console.Error.WriteLine(e.GetBaseException().ToString());
-                data = default(T);
-                Console.Out.WriteLine($"Could not convert {input} to {typeof(T).Name}!");
+                Console.Error.WriteLine($"Could not convert {input} to {typeof(T).Name}!");
+                data = default;
                 return false;
             }
         }
